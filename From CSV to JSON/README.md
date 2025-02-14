@@ -1,9 +1,3 @@
-# PowerAutomateTemplates
-
-Repo which will contains some Cloud flow templates to not reinvent the wheel everytime !
-
-## [ConvertCSVtoJSON](https://github.com/carfup/PowerAutomateTemplates/tree/master/From%20CSV%20to%20JSON)
-
 #### This flow allows you to convert CSV data automatically (without having to think about the column naming and mapping)
 
 Steps to use the flow :
