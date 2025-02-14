@@ -1,0 +1,269 @@
+{
+  "properties": {
+    "connectionReferences": {},
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "Button",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {},
+              "required": []
+            }
+          },
+          "metadata": {
+            "operationMetadataId": "68574ef9-c717-4c29-a6f2-4cec90d461ce"
+          }
+        }
+      },
+      "actions": {
+        "separator": {
+          "type": "Compose",
+          "inputs": ";",
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "9ec9d223-9281-4555-b587-49bd8a3ebceb"
+          }
+        },
+        "Initialize_variable_-_JsonTempIndex": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "JsonTempIndex",
+                "type": "integer",
+                "value": 0
+              }
+            ]
+          },
+          "runAfter": {
+            "Data2Convert": [
+              "SUCCEEDED"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "d099b9a9-d5b3-4a74-b52b-7b293e454266"
+          }
+        },
+        "Data2Convert": {
+          "type": "Compose",
+          "inputs": "Firstname;Lastname;Email;JobTitle\nClement;Olivier;clement@olivier.com;Consultant\nMarc;Dupond;marc@dupond.com;CEO",
+          "runAfter": {
+            "separator": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "59aafee3-42ee-4997-b8c7-b16df7ff503e"
+          }
+        },
+        "Transformation": {
+          "type": "Scope",
+          "actions": {
+            "Split_Header_from_Data": {
+              "type": "Compose",
+              "description": "[0] = Header\n[1] = Values",
+              "inputs": "@split(outputs('Data2Convert'),  decodeUriComponent('%0A'))",
+              "metadata": {
+                "operationMetadataId": "4555fef4-851c-4951-acba-bc5c6be5fb0a"
+              }
+            },
+            "Filter_array_-_Skip_empty_Row": {
+              "type": "Query",
+              "inputs": {
+                "from": "@outputs('Split_Header_from_Data')",
+                "where": "@equals(empty(item()), false)"
+              },
+              "runAfter": {
+                "Split_Header_from_Data": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "dbbe0f72-943e-4fd7-94ee-23a00d5363cf"
+              }
+            },
+            "Apply_to_each_Data_Line": {
+              "type": "Foreach",
+              "foreach": "@skip(body('Filter_array_-_Skip_Empty_Row'),1)",
+              "actions": {
+                "Apply_to_each_property_of_Data_line": {
+                  "type": "Foreach",
+                  "foreach": "@split(items('Apply_to_each_Data_Line'), outputs('Separator'))",
+                  "actions": {
+                    "Compose_-_Get_Header_Data": {
+                      "type": "Compose",
+                      "description": "Retrieve the data column header to use it as property name",
+                      "inputs": "@split(outputs('Split_Header_from_Data')[0], outputs('Separator'))[variables('JsonTempIndex')]",
+                      "metadata": {
+                        "operationMetadataId": "70c3070b-b887-4fa7-b186-38f90f47c70b"
+                      }
+                    },
+                    "Compose_-_AddProp_Data": {
+                      "type": "Compose",
+                      "description": "Add the key:value information into the TempObject",
+                      "inputs": "@addProperty(variables('JsonTempObject'), outputs('Compose_-_Get_Header_Data'), items('Apply_to_each_property_of_Data_line'))",
+                      "runAfter": {
+                        "Compose_-_Get_Header_Data": [
+                          "SUCCEEDED"
+                        ]
+                      }
+                    },
+                    "Set_variable_-_Json_Temp_Object": {
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "JsonTempObject",
+                        "value": "@outputs('Compose_-_AddProp_Data')"
+                      },
+                      "runAfter": {
+                        "Compose_-_AddProp_Data": [
+                          "SUCCEEDED"
+                        ]
+                      }
+                    },
+                    "Increment_variable_-_JsonTempIndex": {
+                      "type": "IncrementVariable",
+                      "inputs": {
+                        "name": "JsonTempIndex"
+                      },
+                      "runAfter": {
+                        "Set_variable_-_Json_Temp_Object": [
+                          "SUCCEEDED"
+                        ]
+                      }
+                    }
+                  },
+                  "metadata": {
+                    "operationMetadataId": "2b231d03-ec08-4e9b-a1ef-be9bfde241a1"
+                  }
+                },
+                "Append_to_array_variable__-_JsonTempArray": {
+                  "type": "AppendToArrayVariable",
+                  "inputs": {
+                    "name": "JsonTempArray",
+                    "value": "@variables('JsonTempObject')"
+                  },
+                  "runAfter": {
+                    "Apply_to_each_property_of_Data_line": [
+                      "SUCCEEDED"
+                    ]
+                  }
+                },
+                "Set_variable_-_Clear_JsonTempObject": {
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "JsonTempObject",
+                    "value": {}
+                  },
+                  "runAfter": {
+                    "Append_to_array_variable__-_JsonTempArray": [
+                      "SUCCEEDED"
+                    ]
+                  }
+                },
+                "Set_variable_-_Reset_JsonTempIndex": {
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "JsonTempIndex",
+                    "value": 0
+                  },
+                  "runAfter": {
+                    "Set_variable_-_Clear_JsonTempObject": [
+                      "SUCCEEDED"
+                    ]
+                  }
+                }
+              },
+              "runAfter": {
+                "Filter_array_-_Skip_empty_Row": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "a714e5cd-c28c-49a5-a9b9-5b6605d2ba09"
+              }
+            }
+          },
+          "runAfter": {
+            "Initialize_variable_-_JsonTempIndex": [
+              "Succeeded"
+            ],
+            "Initialize_variable_-_JsonTempObject": [
+              "SUCCEEDED"
+            ],
+            "Initialize_variable_-_JsonTempArray": [
+              "SUCCEEDED"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "7b6a5765-634a-4b81-8533-1ca81acfb496"
+          }
+        },
+        "Compose_-_Raw_result": {
+          "type": "Compose",
+          "inputs": "@variables('JsonTempArray')",
+          "runAfter": {
+            "Transformation": [
+              "SUCCEEDED"
+            ]
+          }
+        },
+        "Initialize_variable_-_JsonTempObject": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "JsonTempObject",
+                "type": "object",
+                "value": {}
+              }
+            ]
+          },
+          "runAfter": {
+            "Data2Convert": [
+              "SUCCEEDED"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "a8036f22-d4b8-432b-aaff-a662953ff5a1"
+          }
+        },
+        "Initialize_variable_-_JsonTempArray": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "JsonTempArray",
+                "type": "array"
+              }
+            ]
+          },
+          "runAfter": {
+            "Data2Convert": [
+              "SUCCEEDED"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "3b5aaf42-035f-4f54-bcf5-9b876465c501"
+          }
+        }
+      }
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}
